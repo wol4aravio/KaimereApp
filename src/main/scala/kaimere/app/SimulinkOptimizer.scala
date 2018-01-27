@@ -57,7 +57,7 @@ object SimulinkOptimizer extends App {
     println("Done\n")
 
     println("Optimal Parameters:")
-    println(parameters.vals)
+    model.tunableBlocks.foreach(block => println(block.prettyPrint(parameters)))
     println("Criterion:")
     println(result)
 

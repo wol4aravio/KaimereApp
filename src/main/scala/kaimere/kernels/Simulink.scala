@@ -40,19 +40,29 @@ object Simulink {
 
   object Blocks {
 
-    abstract class Tunable {
+    abstract class Tunable(name: String) {
+      def extract(v: RealVector): String
       def tune(v: RealVector): Unit
+      def prettyPrint(v: RealVector): String = s"$name: ${extract(v)}"
     }
 
-    case class Constant(name: String, parameterName: String) extends Tunable {
-      override def tune(v: RealVector): Unit = Matlab.eval(s"set_param('$name', 'Value', num2str(${v(parameterName)}))")
+    case class Constant(name: String, parameterName: String) extends Tunable(name) {
+
+      override def extract(v: RealVector): String = {v(parameterName)}.toString
+
+      override def tune(v: RealVector): Unit = Matlab.eval(s"set_param('$name', 'Value', num2str(${extract(v)}))")
+
     }
 
-    case class RepeatingSequenceInterpolated(name: String, prefix: String, numberOfParameters: Int) extends Tunable {
-      override def tune(v: RealVector): Unit = {
+    case class RepeatingSequenceInterpolated(name: String, prefix: String, numberOfParameters: Int) extends Tunable(name) {
+
+      override def extract(v: RealVector): String = {
         val selectedVars = Range(0, numberOfParameters).map(key => v(s"${prefix}_${key.toString}"))
-        Matlab.eval(s"set_param('$name', 'OutValues', '[${selectedVars.mkString(", ")}]')")
+        s"[${selectedVars.mkString(", ")}]"
       }
+
+      override def tune(v: RealVector): Unit = Matlab.eval(s"set_param('$name', 'OutValues', '${extract(v)}')")
+
     }
 
   }
