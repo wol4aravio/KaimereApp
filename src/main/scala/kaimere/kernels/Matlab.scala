@@ -54,9 +54,16 @@ object Matlab {
     val tunableBlocks = json.getFields("tunable")(0).asInstanceOf[JsArray]
     val blocks = tunableBlocks.elements
       .map { j =>
-        val Seq(JsString(t), JsString(n), JsString(v)) = j.asJsObject.getFields("type", "name", "var")
+        val Seq(JsString(t)) = j.asJsObject.getFields("type")
         t match {
-          case "Constant" => Simulink.Blocks.Constant(s"$name/$n", v)
+          case "Constant" => {
+            val Seq(JsString(n), JsString(v)) = j.asJsObject.getFields("name", "var")
+            Simulink.Blocks.Constant(s"$name/$n", v)
+          }
+          case "RepeatingSequenceInterpolated" => {
+            val Seq(JsString(n), JsNumber(v)) = j.asJsObject.getFields("name", "numberOfVars")
+            Simulink.Blocks.RepeatingSequenceInterpolated(s"$name/$n", n, v.toInt)
+          }
           case _ => throw new Simulink.Exceptions.UnsupportedBlock(t)
         }
       }

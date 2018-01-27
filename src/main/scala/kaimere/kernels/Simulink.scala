@@ -40,12 +40,19 @@ object Simulink {
 
   object Blocks {
 
-    abstract class Tunable(parameterName: String) {
+    abstract class Tunable {
       def tune(v: RealVector): Unit
     }
 
-    case class Constant(name: String, parameterName: String) extends Tunable(parameterName) {
+    case class Constant(name: String, parameterName: String) extends Tunable {
       override def tune(v: RealVector): Unit = Matlab.eval(s"set_param('$name', 'Value', num2str(${v(parameterName)}))")
+    }
+
+    case class RepeatingSequenceInterpolated(name: String, prefix: String, numberOfParameters: Int) extends Tunable {
+      override def tune(v: RealVector): Unit = {
+        val selectedVars = Range(0, numberOfParameters).map(key => v(s"${prefix}_${key.toString}"))
+        Matlab.eval(s"set_param('$name', 'OutValues', '[${selectedVars.mkString(", ")}]')")
+      }
     }
 
   }
