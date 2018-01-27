@@ -10,14 +10,14 @@ import kaimere.real.objects.RealVector
 
 object Matlab {
 
-  var initialized: Boolean = false
+  private var initialized: Boolean = false
 
-  var engine: Object = null
+  private var engine: Object = null
 
-  var start: Method = null
-  var close: Method = null
-  var eval: Method = null
-  var getVariable: Method = null
+  private var start: Method = null
+  private var close: Method = null
+  private var eval: Method = null
+  private var getVariable: Method = null
 
   def initialize(engineLocation: String): Unit = {
     val jarFile = new File(engineLocation)

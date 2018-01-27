@@ -44,7 +44,7 @@ object SimulinkOptimizer extends App {
       jsonConfig = conf.simulinkModelJson())
 
     println("Initializing Optimization Tool")
-    val optimizationTool = OptimizationAlgorithm(scala.io.Source.fromFile(conf.optimizationTool()).mkString.parseJson)
+    val optimizationTool = OptimizationAlgorithm.fromJson(scala.io.Source.fromFile(conf.optimizationTool()).mkString.parseJson)
     val area = conf.area().map { str =>
       val Array(name, min, max) = str.split(':')
       name -> (min.toDouble, max.toDouble)
