@@ -22,7 +22,6 @@ class MatlabSimulinkSuite extends FunSuite with BeforeAndAfterAll {
       model = modelLocation,
       jsonConfig = jsonLocation)
     val result = model.apply(RealVector("a" -> 6 * math.Pi, "b" -> -12 * math.Pi))
-    println(result)
 
     Matlab.unloadSimulinkModel(modelLocation)
 
