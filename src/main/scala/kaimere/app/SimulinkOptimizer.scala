@@ -49,7 +49,7 @@ object SimulinkOptimizer extends App {
       val Array(name, min, max) = str.split(':')
       name -> (min.toDouble, max.toDouble)
     }.toMap[String, (Double, Double)]
-    optimizationTool.initialize(model, area, null, MergeStrategy.selfInit)
+    optimizationTool.initialize(model, area)
 
     println("Working")
     val parameters = optimizationTool.work(MaxTime(conf.time(), verbose = true))
