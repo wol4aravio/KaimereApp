@@ -5,7 +5,6 @@ import spray.json._
 
 import kaimere.kernels.Matlab
 import kaimere.real.optimization.general.OptimizationAlgorithm
-import kaimere.real.optimization.general.OptimizationAlgorithm.MergeStrategy
 import kaimere.real.optimization.general.Instruction.MaxTime
 
 object SimulinkOptimizer extends App {
