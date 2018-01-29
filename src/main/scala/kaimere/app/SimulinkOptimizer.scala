@@ -52,7 +52,7 @@ object SimulinkOptimizer extends App {
         case v => Some(v.split(",").toSet)
       }
     }
-    val instructions = conf.maxTime().map(MaxTime(_))
+    val instructions = conf.maxTime().map(MaxTime(_, verbose = true))
     val optimizationTool = MetaOptimizationAlgorithm(
       algorithms = (1 to cycles).foldLeft(Seq.empty[OptimizationAlgorithm]) { case (a, _) => a ++ algorithms },
       targetVars = (1 to cycles).foldLeft(Seq.empty[Option[Set[String]]]) { case (t, _) => t ++ targetVars },
