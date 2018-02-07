@@ -2,6 +2,7 @@ package kaimere.app
 
 import org.rogach.scallop.ScallopConf
 import java.io._
+import spray.json._
 
 import kaimere.kernels.Matlab
 import kaimere.real.optimization.general.{MetaOptimizationAlgorithm, OptimizationAlgorithm}
@@ -39,6 +40,12 @@ object SimulinkOptimizer extends App {
   def parseTime(str: String): Double = {
     val Array(hours, minutes, seconds) = str.split(":").map(_.toInt)
     60.0 * (60.0 * hours + minutes) + seconds
+  }
+
+  def areaToJson(area: OptimizationAlgorithm.Area): JsValue = {
+    JsArray(area.map { case (key, (min, max)) =>
+      JsObject("key" -> JsString(key), "min" -> JsNumber(min), "max" -> JsNumber(max))}
+      .toVector)
   }
 
   def main(conf: Conf): Unit = {
@@ -103,6 +110,20 @@ object SimulinkOptimizer extends App {
         val targetFolder = new File(conf.log())
         if (targetFolder.exists()) StateLogger.deleteFolder(targetFolder)
         targetFolder.mkdir()
+
+        val configJson =
+          s"""
+            |{
+            |   "simulinkModel": "${conf.simulinkModelSlx()}",
+            |   "simulinkModelJson": "${conf.simulinkModelJson()}",
+            |   "algorithm": ${metaTool.toJson},
+            |   "area": ${areaToJson(area)}
+            |}
+          """.stripMargin.parseJson
+        val out = new BufferedWriter(new FileWriter(s"${conf.log()}/config.json"))
+        out.write(configJson.prettyPrint)
+        out.close()
+
         metaTool.work(StateLogger(conf.log(), null))
       }
 
@@ -113,7 +134,6 @@ object SimulinkOptimizer extends App {
     model.tunableBlocks.foreach(block => println(block.prettyPrint(optimalParameters)))
     println("Criterion:")
     println(result)
-
 
     terminate(conf)
   }
