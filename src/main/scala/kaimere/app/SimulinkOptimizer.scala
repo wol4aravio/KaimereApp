@@ -114,7 +114,7 @@ object SimulinkOptimizer extends App {
     println("Criterion:")
     println(result)
 
-
+    println("Terminating Matlab Engine")
     terminate(conf)
   }
 
