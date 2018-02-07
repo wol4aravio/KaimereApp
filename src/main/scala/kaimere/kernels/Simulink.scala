@@ -5,24 +5,35 @@ import kaimere.real.objects.Function
 
 object Simulink {
 
-  case class Model(name: String, outputs: Vector[String],
-                   terminalValue: Vector[Double], terminalPenalty: Vector[Double], terminalTolerance: Vector[Double],
-                   criterionIntegral: String, tunableBlocks: Vector[Blocks.Tunable], normCoeff: Double = 2.0) extends Function {
+  case class Model(name: String, state: Vector[String], control: Vector[String],
+                   criterionIntegral: String, criterionTerminal: String,
+                   terminalCondition: Vector[(String, Double, Double, Double)],
+                   tunableBlocks: Vector[Blocks.Tunable], normCoeff: Double = 1.0) extends Function {
     override def apply(v: RealVector): Double = {
       tunableBlocks.foreach(_.tune(v))
       Matlab.eval(s"sim('$name');")
-      Matlab.eval(s"criterionIntegral = $criterionIntegral.Data(end);")
-      val valueOfIntegralCriterion = Matlab.getVariable("criterionIntegral")
-      val penalties = outputs.zipWithIndex
-        .map { case (varName, id) =>
-          Matlab.eval(s"$varName = $varName.Data(end);")
-          val exactValue = Matlab.getVariable(s"$varName")
-          val idealValue = terminalValue(id)
-          val penalty = terminalPenalty(id)
-          val tolerance = terminalTolerance(id)
+
+      val valueOfIntegralCriterion =
+        if (criterionIntegral != "null") {
+          Matlab.eval(s"criterionIntegral = $criterionIntegral.Data(end);")
+          Matlab.getVariable("criterionIntegral")
+        }
+        else 0.0
+
+      val valueOfTerminalCriterion =
+        if (criterionTerminal != "null") {
+          Matlab.eval(s"criterionTerminal = $criterionTerminal.Data(end);")
+          Matlab.getVariable("criterionTerminal")
+        }
+        else 0.0
+
+      val penalties = terminalCondition
+        .map { case (stateName, idealValue, penalty, tolerance) =>
+          Matlab.eval(s"$stateName = $stateName.Data(end);")
+          val exactValue = Matlab.getVariable(s"$stateName")
           getPenalty(exactValue, idealValue, penalty, tolerance)
         }
-      valueOfIntegralCriterion + penalties.sum
+      valueOfIntegralCriterion + valueOfTerminalCriterion + penalties.sum
     }
 
     def getPenalty(exactValue: Double, idealValue: Double,

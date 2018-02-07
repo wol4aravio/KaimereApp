@@ -1,10 +1,11 @@
 package kaimere.app
 
 import org.rogach.scallop.ScallopConf
-import spray.json._
+import java.io._
+
 import kaimere.kernels.Matlab
-import kaimere.real.optimization.general.{Instruction, MetaOptimizationAlgorithm, OptimizationAlgorithm}
-import kaimere.real.optimization.general.Instruction.{MaxTime, Verbose}
+import kaimere.real.optimization.general.{MetaOptimizationAlgorithm, OptimizationAlgorithm}
+import kaimere.real.optimization.general.instructions._
 
 object SimulinkOptimizer extends App {
 
@@ -13,10 +14,11 @@ object SimulinkOptimizer extends App {
     val simulinkModelSlx = opt[String](required = true)
     val simulinkModelJson = opt[String](required = true)
     val optimizationTools = opt[List[String]](required = true)
-    val targetVars = opt[List[String]](required = true)
-    val maxTime = opt[List[String]](required = true)
+    val varsSets = opt[List[String]](required = true)
+    val instructions = opt[List[String]](required = true)
+    val cycles = opt[List[String]](required = true)
     val area = opt[List[String]](required = true)
-    val cycles = opt[Int](default = Some(1))
+    val log = opt[String](default = Option.empty[String])
     verify()
   }
 
@@ -48,44 +50,67 @@ object SimulinkOptimizer extends App {
       model = conf.simulinkModelSlx(),
       jsonConfig = conf.simulinkModelJson())
 
-    println("Initializing Optimization Tool")
-    val optimizationTool =
-      if (conf.optimizationTools().size > 1) {
-        val cycles = conf.cycles()
-        val algorithms = conf.optimizationTools().map(OptimizationAlgorithm.fromCsv)
-        val targetVars: Seq[Option[Set[String]]] = conf.targetVars().map {
-          {
-            case "all" => Option.empty[Set[String]]
-            case v => Some(v.split(",").toSet)
-          }
-        }
-        val instructions = conf.maxTime()
-          .zipWithIndex
-          .map { case (t, id) => Verbose(algorithms(id), MaxTime(parseTime(t), verbose = true)) }
-        MetaOptimizationAlgorithm(
-          algorithms = (1 to cycles).foldLeft(Seq.empty[OptimizationAlgorithm]) { case (a, _) => a ++ algorithms },
-          targetVars = (1 to cycles).foldLeft(Seq.empty[Option[Set[String]]]) { case (t, _) => t ++ targetVars },
-          instructions = (1 to cycles).foldLeft(Seq.empty[Instruction]) { case (i, _) => i ++ instructions })
-      }
-      else {
-        OptimizationAlgorithm.fromCsv(conf.optimizationTools().head)
-      }
+    println("Initializing Optimization Tools")
+    val toolsMap = conf.optimizationTools().map { str =>
+      val Array(toolId, tool) = str.split(":")
+      (toolId, OptimizationAlgorithm.fromCsv(tool))
+    }.toMap[String, OptimizationAlgorithm]
+
+    val varsSetsMap = conf.varsSets().map { str =>
+      val Array(toolId, set) = str.split(":")
+      (toolId, set.split(",") match {
+        case Array("all") => Option.empty[Set[String]]
+        case s => Some(s.toSet)
+      })
+    }.toMap[String, Option[Set[String]]]
+
+    val instructionsMap = conf.instructions().map { str =>
+      val Array(toolId, instruction) = str.split(":")
+      (toolId, GeneralInstruction.fromCsv(instruction))
+    }.toMap[String, GeneralInstruction]
+
+
+    val (metaTools, metaVars, metaInstructions) = conf.cycles().map { str =>
+      val Array(toolsIds, setsId, instructionsIds, repeat) = str.split(";")
+      val tools = toolsIds.split(">").map(id => toolsMap(id))
+      val sets = setsId.split(">").map(id => varsSetsMap(id))
+      val instructions = instructionsIds.split(">").map(id => instructionsMap(id))
+
+      val repeatedTools = Range(0, repeat.toInt).foldLeft(Array.empty[OptimizationAlgorithm]) { case (seq, _) => seq ++ tools }
+      val repeatedSets = Range(0, repeat.toInt).foldLeft(Array.empty[Option[Set[String]]]) { case (seq, _) => seq ++ sets }
+      val repeatedInstructions = Range(0, repeat.toInt).foldLeft(Array.empty[GeneralInstruction]) { case (seq, _) => seq ++ instructions }
+
+      (repeatedTools, repeatedSets, repeatedInstructions)
+    }.reduce[(Array[OptimizationAlgorithm], Array[Option[Set[String]]], Array[GeneralInstruction])] { case (left, right) =>
+      val (tools_1, sets_1, instructions_1) = left
+      val (tools_2, sets_2, instructions_2) = right
+      (tools_1 ++ tools_2, sets_1 ++ sets_2, instructions_1 ++ instructions_2)
+    }
+
+    val metaTool = MetaOptimizationAlgorithm(metaTools, metaVars, metaInstructions)
 
     val area = conf.area().map { str =>
       val Array(name, min, max) = str.split(':')
       name -> (min.toDouble, max.toDouble)
     }.toMap[String, (Double, Double)]
-    optimizationTool.initialize(model, area)
+
+    metaTool.initialize(model, area)
 
     println("Working")
-    val parameters =
-      if (conf.optimizationTools().size > 1) optimizationTool.work(null)
-      else optimizationTool.work(Verbose(optimizationTool, MaxTime(parseTime(conf.maxTime().head), verbose = true)))
-    val result = model(parameters)
+    val optimalParameters =
+      if (conf.log.isEmpty) metaTool.work(null)
+      else {
+        val targetFolder = new File(conf.log())
+        if (targetFolder.exists()) StateLogger.deleteFolder(targetFolder)
+        targetFolder.mkdir()
+        metaTool.work(StateLogger(conf.log(), null))
+      }
+
+    val result = model(optimalParameters)
     println("Done\n")
 
     println("Optimal Parameters:")
-    model.tunableBlocks.foreach(block => println(block.prettyPrint(parameters)))
+    model.tunableBlocks.foreach(block => println(block.prettyPrint(optimalParameters)))
     println("Criterion:")
     println(result)
 

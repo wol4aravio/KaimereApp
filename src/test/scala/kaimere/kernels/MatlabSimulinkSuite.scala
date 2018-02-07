@@ -16,8 +16,8 @@ class MatlabSimulinkSuite extends FunSuite with BeforeAndAfterAll {
   }
 
   test("Orientation Test") {
-    val modelLocation = "./resources/test/orientation.slx"
-    val jsonLocation = "./resources/test/orientation.json"
+    val modelLocation = "./resources/test/SpacecraftOrientation.slx"
+    val jsonLocation = "./resources/test/SpacecraftOrientation.json"
     val model = Matlab.loadSimulinkModel(
       model = modelLocation,
       jsonConfig = jsonLocation)

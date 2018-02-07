@@ -49,10 +49,26 @@ object Matlab {
 
   def loadSimulinkModel(model: String, jsonConfig: String): Simulink.Model  = {
     val json = scala.io.Source.fromFile(jsonConfig).mkString.parseJson.asJsObject
-    val name = json.getFields("name")(0).asInstanceOf[JsString].value
-    val criterionIntegral = json.getFields("criterionIntegral")(0).asInstanceOf[JsString].value
-    val tunableBlocks = json.getFields("tunable")(0).asInstanceOf[JsArray]
-    val blocks = tunableBlocks.elements
+    val Seq(
+    JsString(name),
+    JsArray(stateJson),
+    JsArray(controlJson),
+    JsString(criterionIntegral),
+    JsString(criterionTerminal),
+    JsArray(terminalConditionJson),
+    JsArray(tunableJson)) =
+      json.getFields("name", "state", "control", "criterionIntegral", "criterionTerminal", "terminalCondition", "tunable")
+
+    val state = stateJson.map(_.asInstanceOf[JsString].value)
+    val control = controlJson.map(_.asInstanceOf[JsString].value)
+
+    val terminalCondition = terminalConditionJson.map { j =>
+      val Seq(JsString(terminalName), JsNumber(terminalValue), JsNumber(terminalPenalty), JsNumber(terminalTolerance)) =
+        j.asJsObject.getFields("name", "value", "penalty", "tolerance")
+      (terminalName, terminalValue.toDouble, terminalPenalty.toDouble, terminalTolerance.toDouble)
+    }
+
+    val blocks = tunableJson
       .map { j =>
         val Seq(JsString(t)) = j.asJsObject.getFields("type")
         t match {
@@ -67,13 +83,10 @@ object Matlab {
           case _ => throw new Simulink.Exceptions.UnsupportedBlock(t)
         }
       }
-    val outputs = json.getFields("outputs")(0).asInstanceOf[JsArray].elements.map(_.asInstanceOf[JsString].value)
-    val terminalValue = json.getFields("terminalValue")(0).asInstanceOf[JsArray].elements.map(_.asInstanceOf[JsNumber].value.toDouble)
-    val terminalPenalty = json.getFields("terminalPenalty")(0).asInstanceOf[JsArray].elements.map(_.asInstanceOf[JsNumber].value.toDouble)
-    val terminalTolerance = json.getFields("terminalTolerance")(0).asInstanceOf[JsArray].elements.map(_.asInstanceOf[JsNumber].value.toDouble)
+
     val path = Paths.get(model).toAbsolutePath().toString()
     eval(s"load_system('$path')")
-    Simulink.Model(name, outputs, terminalValue, terminalPenalty, terminalTolerance, criterionIntegral, blocks)
+    Simulink.Model(name, state, control, criterionIntegral, criterionTerminal, terminalCondition, blocks)
   }
 
   def unloadSimulinkModel(model: String): Unit = {
