@@ -29,8 +29,8 @@ object Simulink {
 
       val penalties = terminalCondition
         .map { case (stateName, idealValue, penalty, tolerance) =>
-          Matlab.eval(s"$stateName = $stateName.Data(end);")
-          val exactValue = Matlab.getVariable(s"$stateName")
+          Matlab.eval(s"${stateName}_end = $stateName.Data(end);")
+          val exactValue = Matlab.getVariable(s"${stateName}_end")
           getPenalty(exactValue, idealValue, penalty, tolerance)
         }
       valueOfIntegralCriterion + valueOfTerminalCriterion + penalties.sum

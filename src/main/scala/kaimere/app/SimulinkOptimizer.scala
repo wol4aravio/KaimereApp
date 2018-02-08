@@ -114,7 +114,7 @@ object SimulinkOptimizer extends App {
         val configJson =
           s"""
             |{
-            |   "simulinkModel": "${conf.simulinkModelSlx()}",
+            |   "simulinkModelSlx": "${conf.simulinkModelSlx()}",
             |   "simulinkModelJson": "${conf.simulinkModelJson()}",
             |   "algorithm": ${metaTool.toJson},
             |   "area": ${areaToJson(area)}
