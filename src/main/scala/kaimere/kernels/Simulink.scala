@@ -13,9 +13,12 @@ object Simulink {
       tunableBlocks.foreach(_.tune(v))
       Matlab.eval(s"sim('$name');")
 
+      Matlab.eval("criterion = 0.0;")
+
       val valueOfIntegralCriterion =
         if (criterionIntegral != "null") {
           Matlab.eval(s"criterionIntegral = $criterionIntegral.Data(end);")
+          Matlab.eval("criterion = criterion + criterionIntegral;")
           Matlab.getVariable("criterionIntegral")
         }
         else 0.0
@@ -23,6 +26,7 @@ object Simulink {
       val valueOfTerminalCriterion =
         if (criterionTerminal != "null") {
           Matlab.eval(s"criterionTerminal = $criterionTerminal.Data(end);")
+          Matlab.eval("criterion = criterion + criterionTerminal;")
           Matlab.getVariable("criterionTerminal")
         }
         else 0.0
@@ -33,6 +37,9 @@ object Simulink {
           val exactValue = Matlab.getVariable(s"${stateName}_end")
           getPenalty(exactValue, idealValue, penalty, tolerance)
         }
+
+      Matlab.eval(s"penalty = ${penalties.sum};")
+
       valueOfIntegralCriterion + valueOfTerminalCriterion + penalties.sum
     }
 

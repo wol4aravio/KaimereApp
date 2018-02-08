@@ -45,37 +45,76 @@ object Reporter extends App {
       dirs.foldLeft(Seq.empty[State]) { case (s, d) => s ++ extractStates(d)}
   }
 
-  def parseGraphicsJson(json: JsValue): Seq[((Int, Int, String), (Int, Int, Int, Int), Seq[(Option[String], String, String)])] = {
-    json.asInstanceOf[JsArray].elements.map { jsValue_1 =>
-        val Seq(JsNumber(rows), JsNumber(cols), JsString(position), JsArray(objects)) =
-          jsValue_1.asJsObject.getFields("rows", "cols", "position", "objects")
-      val Seq(JsArray(xLim), JsArray(yLim)) = jsValue_1.asJsObject.getFields("xLim", "yLim")
-      val Seq(xMin, xMax) = xLim.map(_.asInstanceOf[JsNumber].value.toInt)
-      val Seq(yMin, yMax) = yLim.map(_.asInstanceOf[JsNumber].value.toInt)
+  def parseGraphicsJson(json: JsValue): ((Int, Int), (String, String), Seq[(String, (Int, Int, Int, Int), Seq[(Option[String], String, String)])]) = {
+    val Seq(JsNumber(rows), JsNumber(cols)) = json.asJsObject.getFields("rows", "cols")
+    val Seq(JsString(criterionPosition), JsString(penaltyPosition)) = json.asJsObject.getFields("criterionPosition", "penaltyPosition")
+    val Seq(JsArray(toPlot)) = json.asJsObject.getFields("toPlot")
+
+    ((rows.toInt, cols.toInt),
+      (criterionPosition, penaltyPosition),
+      toPlot.map { jsValue_1 =>
+        val Seq(JsString(position), JsArray(xLim), JsArray(yLim), JsArray(objects)) =
+          jsValue_1.asJsObject.getFields("position", "xLim", "yLim", "objects")
+        val Seq(xMin, xMax) = xLim.map(_.asInstanceOf[JsNumber].value.toInt)
+        val Seq(yMin, yMax) = yLim.map(_.asInstanceOf[JsNumber].value.toInt)
         val objectsToDraw = objects.map { jsValue_2 =>
-            val Seq(JsString(x), JsString(y), JsString(name)) = jsValue_2.asJsObject.getFields("x", "y", "name")
+          val Seq(JsString(x), JsString(y), JsString(name)) = jsValue_2.asJsObject.getFields("x", "y", "name")
           (if (x == "null") Option.empty[String] else Some(x), y, name)
         }
-      ((rows.toInt, cols.toInt, position), (xMin, xMax, yMin, yMax), objectsToDraw)
-    }
+        (position, (xMin, xMax, yMin, yMax), objectsToDraw)
+      })
   }
 
   def drawGif(bestValues: Seq[RealVector], model: Simulink.Model,
               width: Int, height: Int,
-              whatToDraw: Seq[((Int, Int, String), (Int, Int, Int, Int), Seq[(Option[String], String, String)])],
-              delay: Double, filename: String
+              whatToDraw: ((Int, Int), (String, String), Seq[(String, (Int, Int, Int, Int), Seq[(Option[String], String, String)])]),
+              areaCriterionPenalty: (Double, Double, Double, Double),
+              delay: Double, filename: String, fontSize: Int = 16
              ): Unit = {
-    val subplot = whatToDraw.map(_._1)
-    val limits = whatToDraw.map(_._2)
-    val allAxes = whatToDraw.map(_._3)
+
+    val (rows, cols) = whatToDraw._1
+
+    val (positionCriterion, positionPenalty) = whatToDraw._2
+    val (minCriterion, maxCriterion, minPenalty, maxPenalty) = areaCriterionPenalty
+
+    val subplot = whatToDraw._3.map(_._1)
+    val limits = whatToDraw._3.map(_._2)
+    val allAxes = whatToDraw._3.map(_._3)
+
     val numberOfPlots = subplot.size
-    Matlab.eval(s"slideShow = figure('Units', 'pixels', 'Position', [0, 0, $width, $height], 'Visible', 'off');")
-    Matlab.eval("axis tight manual")
+    val numberOfSlides = bestValues.size
+
+
+    Matlab.eval(s"slideShow = figure('Units', 'pixels', 'Position', [0, 0, $width, $height], 'PaperPositionMode', 'auto', 'Visible', 'off');")
+    Matlab.eval("axis tight manual;")
     Matlab.eval(s"filename = '$filename';")
     bestValues.zipWithIndex.foreach { case (v, slideId) =>
+
       model(v)
+
+      // Plot Criterion
+      Matlab.eval(s"I_(${slideId + 1}) = criterion;")
+      Matlab.eval(s"subplot($rows, $cols, $positionCriterion);")
+      Matlab.eval(s"plot(1:${slideId + 1}, I_, 'LineWidth', 2);")
+      Matlab.eval(s"xlim([1, $numberOfSlides]);")
+      Matlab.eval(s"ylim([$minCriterion, $maxCriterion]);")
+      Matlab.eval("a = get(gca, 'XTickLabel');")
+      Matlab.eval(s"set(gca, 'XTickLabel', a, 'FontSize', $fontSize);")
+      Matlab.eval(s"title('Criterion on Iteration #${slideId + 1}', 'FontSize', $fontSize);")
+
+      // Plot Penalty
+      Matlab.eval(s"P_(${slideId + 1}) = penalty;")
+      Matlab.eval(s"subplot($rows, $cols, $positionPenalty);")
+      Matlab.eval(s"plot(1:${slideId + 1}, P_, 'LineWidth', 2);")
+      Matlab.eval(s"xlim([1, $numberOfSlides]);")
+      Matlab.eval(s"ylim([$minPenalty, $maxPenalty]);")
+      Matlab.eval("a = get(gca, 'XTickLabel');")
+      Matlab.eval(s"set(gca, 'XTickLabel', a, 'FontSize', $fontSize);")
+      Matlab.eval(s"title('Penalty on Iteration #${slideId + 1}', 'FontSize', $fontSize);")
+
+      // Plot remaining objects
       Range(0, numberOfPlots).foreach { plotId =>
-        val (w, h, p) = subplot(plotId)
+        val position = subplot(plotId)
         val axes = allAxes(plotId).map { case (x, y, name) =>
           if (x.isEmpty) (s"$y.Time", s"$y.Data", s"'$name'")
           else (s"${x.get}.Data", s"$y.Data", s"'name'")
@@ -84,13 +123,18 @@ object Reporter extends App {
         val yAxis = axes.map(_._2)
         val names = axes.map(_._3)
         val (xMin, xMax, yMin, yMax) = limits(plotId)
-        Matlab.eval(s"subplot($w, $h, $p)")
-        Matlab.eval(s"plot([${xAxis.mkString(", ")}], [${yAxis.mkString(", ")}], 'LineWidth', 2)")
-        Matlab.eval(s"xlim([$xMin, $xMax])")
-        Matlab.eval(s"ylim([$yMin, $yMax])")
-        Matlab.eval(s"legend(${names.mkString(", ")}, 'Location', 'southoutside', 'Orientation', 'horizontal')")
-        Matlab.eval(s"title('Iteration: ${slideId + 1}')")
+        Matlab.eval(s"subplot($rows, $cols, $position);")
+        Matlab.eval(s"plot([${xAxis.mkString(", ")}], [${yAxis.mkString(", ")}], 'LineWidth', 2);")
+        Matlab.eval(s"xlim([$xMin, $xMax]);")
+        Matlab.eval(s"ylim([$yMin, $yMax]);")
+        Matlab.eval("a = get(gca, 'XTickLabel');")
+        Matlab.eval(s"set(gca, 'XTickLabel', a, 'FontSize', $fontSize);")
+        Matlab.eval(s"lg = legend(${names.mkString(", ")}, 'Location', 'southoutside', 'Orientation', 'horizontal');")
+        Matlab.eval(s"lg.FontSize = $fontSize;")
+        Matlab.eval(s"title('Iteration: ${slideId + 1}', 'FontSize', $fontSize);")
       }
+
+      // Save part of GIF
       Matlab.eval("drawnow")
       Matlab.eval("frame = getframe(slideShow);")
       Matlab.eval("im = frame2im(frame);")
@@ -116,11 +160,31 @@ object Reporter extends App {
     val states = extractStates(logDirectory)
 
     println("Selecting best parameters from each state")
-    val bestValues = states.map(_.getBestBy(model)).map(_._1)
+    var (minCriterion, maxCriterion) = (Double.PositiveInfinity, Double.NegativeInfinity)
+    var (minPenalty, maxPenalty) = (Double.PositiveInfinity, Double.NegativeInfinity)
+    val bestValues = states
+      .map(_.getBestBy(model))
+      .map { case (v, _) =>
+        model(v)
+
+        val criterion = Matlab.getVariable("criterion")
+        if (criterion > maxCriterion) maxCriterion = criterion
+        if (criterion < minCriterion) minCriterion = criterion
+
+        val penalty = Matlab.getVariable("penalty")
+        if (penalty > maxPenalty) maxPenalty = penalty
+        if (penalty < minPenalty) minPenalty = penalty
+
+        v
+      }
 
     println("Making graphics")
     val graphicsJson = Source.fromFile(conf.graphicsJson()).mkString.parseJson
-    drawGif(bestValues, model, conf.width(), conf.height(), parseGraphicsJson(graphicsJson), conf.delay(), conf.saveTo())
+    drawGif(
+      bestValues, model,
+      conf.width(), conf.height(), parseGraphicsJson(graphicsJson),
+      (minCriterion, maxCriterion, minPenalty, maxPenalty),
+      conf.delay(), conf.saveTo())
 
     println("Terminating Matlab Engine")
     terminate(conf, simulinkModelSlx)
