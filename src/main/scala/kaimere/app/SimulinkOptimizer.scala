@@ -20,6 +20,8 @@ object SimulinkOptimizer extends App {
     val cycles = opt[List[String]](required = true)
     val area = opt[List[String]](required = true)
     val log = opt[String](default = Option.empty[String])
+    val verbose = opt[Boolean](default = Some(true))
+    val bestOnly = opt[Boolean](default = Some(true))
     verify()
   }
 
@@ -73,7 +75,8 @@ object SimulinkOptimizer extends App {
 
     val instructionsMap = conf.instructions().map { str =>
       val Array(toolId, instruction) = str.split(":")
-      (toolId, GeneralInstruction.fromCsv(instruction))
+      if(conf.verbose()) (toolId, VerboseBest(GeneralInstruction.fromCsv(instruction)))
+      else (toolId, GeneralInstruction.fromCsv(instruction))
     }.toMap[String, GeneralInstruction]
 
 
@@ -110,30 +113,33 @@ object SimulinkOptimizer extends App {
         val targetFolder = new File(conf.log())
         if (targetFolder.exists()) StateLogger.deleteFolder(targetFolder)
         targetFolder.mkdir()
-
-        val configJson =
-          s"""
-            |{
-            |   "simulinkModelSlx": "${conf.simulinkModelSlx()}",
-            |   "simulinkModelJson": "${conf.simulinkModelJson()}",
-            |   "algorithm": ${metaTool.toJson},
-            |   "area": ${areaToJson(area)}
-            |}
-          """.stripMargin.parseJson
-        val out = new BufferedWriter(new FileWriter(s"${conf.log()}/config.json"))
-        out.write(configJson.prettyPrint)
-        out.close()
-
-        metaTool.work(StateLogger(conf.log(), null))
+        metaTool.work(StateLogger(conf.log(), null, bestOnly = conf.bestOnly()))
       }
 
     val result = model(optimalParameters)
     println("Done\n")
 
     println("Optimal Parameters:")
-    model.tunableBlocks.foreach(block => println(block.prettyPrint(optimalParameters)))
+    val outputJson = JsArray(model.tunableBlocks.map(block => block.toJson(optimalParameters)))
+    println(outputJson.prettyPrint)
     println("Criterion:")
     println(result)
+
+    if (conf.log.isDefined) {
+      val configJson =
+        s"""
+           |{
+           |   "simulinkModelSlx": "${conf.simulinkModelSlx()}",
+           |   "simulinkModelJson": "${conf.simulinkModelJson()}",
+           |   "algorithm": ${metaTool.toJson},
+           |   "area": ${areaToJson(area)},
+           |   "blocks": $outputJson
+           |}
+          """.stripMargin.parseJson
+      val out = new BufferedWriter(new FileWriter(s"${conf.log()}/config.json"))
+      out.write(configJson.prettyPrint)
+      out.close()
+    }
 
     println("Terminating Matlab Engine")
     terminate(conf)

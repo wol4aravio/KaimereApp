@@ -2,6 +2,7 @@ package kaimere.kernels
 
 import kaimere.real.objects.RealVector
 import kaimere.real.objects.Function
+import spray.json.{JsObject, JsString}
 
 object Simulink {
 
@@ -62,6 +63,9 @@ object Simulink {
       def extract(v: RealVector): String
       def tune(v: RealVector): Unit
       def prettyPrint(v: RealVector): String = s"$name: ${extract(v)}"
+      def toJson(v: RealVector): JsObject = JsObject(
+        "name" -> JsString(name),
+        "parameters" -> JsString(extract(v)))
     }
 
     case class Constant(name: String, parameterName: String) extends Tunable(name) {
