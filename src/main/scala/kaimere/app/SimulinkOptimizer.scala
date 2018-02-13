@@ -2,9 +2,10 @@ package kaimere.app
 
 import org.rogach.scallop.ScallopConf
 import java.io._
-import spray.json._
 
+import spray.json._
 import kaimere.kernels.Matlab
+import kaimere.real.optimization.general.initializers.ExactInitializer
 import kaimere.real.optimization.general.{MetaOptimizationAlgorithm, OptimizationAlgorithm}
 import kaimere.real.optimization.general.instructions._
 
@@ -104,7 +105,7 @@ object SimulinkOptimizer extends App {
       name -> (min.toDouble, max.toDouble)
     }.toMap[String, (Double, Double)]
 
-    metaTool.initialize(model, area)
+    metaTool.initialize(model, area, initializer = ExactInitializer(target = 0.0))
 
     println("Working")
     val optimalParameters =
