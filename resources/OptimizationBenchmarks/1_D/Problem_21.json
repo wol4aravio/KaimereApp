@@ -1,0 +1,17 @@
+{
+  "name": "Problem 21",
+  "function": "x * sin(x) + x * cos(2 * x)",
+  "area": [
+    {
+      "x": {
+        "min": 0.0,
+        "max": 10.0
+      }
+    }
+  ],
+  "answer": [
+    {
+      "x": 4.79540594276134
+    }
+  ]
+}
