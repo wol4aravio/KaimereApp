@@ -1,6 +1,6 @@
 {
   "name": "Problem 18",
-  "function": "If{x <= 3, (x - 2) ** 2, 2 * ln(x - 2) + 1}",
+  "function": "cond(leq(x, 3), (x - 2) ** 2, 2 * ln(x - 2) + 1)",
   "area": [
     {
       "x": {
