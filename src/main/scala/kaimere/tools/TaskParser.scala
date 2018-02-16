@@ -1,7 +1,10 @@
 package kaimere.tools
 
 import kaimere.real.objects._
+import kaimere.real.objects.tree_function.TreeFunction
 import kaimere.real.optimization.general.OptimizationAlgorithm
+import kaimere.tools.parser.MathExpressionParser
+import spray.json._
 
 object TaskParser {
 
@@ -38,8 +41,13 @@ object TaskParser {
 
   }
 
-  def parseToTask(pathToTaskJson: String): (Function, OptimizationAlgorithm.Area, RealVector) = {
+  def parseToTask(jsonTask: String): (String, Function, OptimizationAlgorithm.Area, RealVector) = {
 
+    val json = scala.io.Source.fromFile(jsonTask).mkString.parseJson.asJsObject
+
+    val Seq(JsString(name), JsString(function), JsArray(area), answer) = json.getFields("name", "function", "area", "answer")
+
+    (name, TreeFunction.apply(MathExpressionParser(handleOperators(function))), )
 
 
   }
