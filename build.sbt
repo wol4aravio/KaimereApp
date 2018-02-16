@@ -10,4 +10,4 @@ resolvers ++= Seq(
 
 libraryDependencies += "org.rogach" %% "scallop" % "3.1.1"
 
-libraryDependencies += "com.github.wol4aravio" %% "kaimere" % "0.4.5.0-SNAPSHOT"
+libraryDependencies += "com.github.wol4aravio" %% "kaimere" % "0.4.5.3-SNAPSHOT"
