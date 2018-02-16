@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/wol4aravio/KaimereApp.svg?branch=master&pony=17)](https://travis-ci.org/wol4aravio/KaimereApp.svg?branch=master)
+
 # Basic Description
 Application of Kaimere project to different optimization tasks.
 Currently supporty optimization of Simulink models using different optimization techniques (SimulinkOptimizer app).
