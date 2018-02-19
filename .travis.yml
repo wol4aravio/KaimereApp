@@ -12,3 +12,5 @@ script:
   - sbt assembly
 after_success:
   - mvn clean deploy --settings settings.xml
+  on:
+    branch: master
