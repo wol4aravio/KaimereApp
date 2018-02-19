@@ -10,7 +10,5 @@ env:
 
 script:
   - sbt assembly
-after_success:
+deploy:
   - mvn clean deploy --settings settings.xml
-  on:
-    branch: master

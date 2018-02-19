@@ -3,7 +3,7 @@ package kaimere.apps
 import java.io.{BufferedWriter, FileWriter}
 
 import kaimere.real.optimization.general.{MetaOptimizationAlgorithm, OptimizationAlgorithm}
-import kaimere.real.optimization.general.instructions.GeneralInstruction
+import kaimere.real.optimization.general.instructions.Instruction
 import org.rogach.scallop.ScallopConf
 import spray.json._
 
@@ -45,8 +45,8 @@ object ToolToJson extends App {
 
           val instructionsMap = conf.instructions().map { str =>
             val Array(toolId, instruction) = str.split(":")
-            (toolId, GeneralInstruction.fromCsv(instruction))
-          }.toMap[String, GeneralInstruction]
+            (toolId, Instruction.fromCsv(instruction))
+          }.toMap[String, Instruction]
 
 
           val Array(toolsIds, setsId, instructionsIds, repeat) = str.split(";")
@@ -56,10 +56,10 @@ object ToolToJson extends App {
 
           val repeatedTools = Range(0, repeat.toInt).foldLeft(Array.empty[OptimizationAlgorithm]) { case (seq, _) => seq ++ tools }
           val repeatedSets = Range(0, repeat.toInt).foldLeft(Array.empty[Option[Set[String]]]) { case (seq, _) => seq ++ sets }
-          val repeatedInstructions = Range(0, repeat.toInt).foldLeft(Array.empty[GeneralInstruction]) { case (seq, _) => seq ++ instructions }
+          val repeatedInstructions = Range(0, repeat.toInt).foldLeft(Array.empty[Instruction]) { case (seq, _) => seq ++ instructions }
 
           (repeatedTools, repeatedSets, repeatedInstructions)
-        }.reduce[(Array[OptimizationAlgorithm], Array[Option[Set[String]]], Array[GeneralInstruction])] { case (left, right) =>
+        }.reduce[(Array[OptimizationAlgorithm], Array[Option[Set[String]]], Array[Instruction])] { case (left, right) =>
           val (tools_1, sets_1, instructions_1) = left
           val (tools_2, sets_2, instructions_2) = right
           (tools_1 ++ tools_2, sets_1 ++ sets_2, instructions_1 ++ instructions_2)

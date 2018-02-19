@@ -86,7 +86,7 @@ object SimulinkOptimizer extends App {
          |{
          |   "simulinkModelSlx": "${conf.simulinkModelSlx()}",
          |   "simulinkModelJson": "${conf.simulinkModelJson()}",
-         |   "algorithm": ${optimizationTool.toJson},
+         |   "algorithm": ${OptimizationAlgorithm.toJson(optimizationTool)},
          |   "blocks": $outputJson
          |}
         """.stripMargin.parseJson
