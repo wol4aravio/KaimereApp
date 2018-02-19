@@ -9,15 +9,20 @@ import kaimere.real.optimization.general.initializers.ExactInitializer
 import kaimere.real.optimization.general.{MetaOptimizationAlgorithm, OptimizationAlgorithm}
 import kaimere.real.optimization.general.instructions._
 
-object SimulinkOptimizer extends App {
+object SimulinkOptimizer_Old extends App {
 
   class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
     val matlabEngine = opt[String](required = true)
     val simulinkModelSlx = opt[String](required = true)
     val simulinkModelJson = opt[String](required = true)
-    val optimizationToolJson = opt[String](required = true)
-    val instruction = opt[String](required = true)
+    val optimizationTools = opt[List[String]](required = true)
+    val varsSets = opt[List[String]](required = true)
+    val instructions = opt[List[String]](required = true)
+    val cycles = opt[List[String]](required = true)
+    val area = opt[List[String]](required = true)
     val log = opt[String](default = Option.empty[String])
+    val verbose = opt[Boolean](default = Some(true))
+    val bestOnly = opt[Boolean](default = Some(true))
     verify()
   }
 
