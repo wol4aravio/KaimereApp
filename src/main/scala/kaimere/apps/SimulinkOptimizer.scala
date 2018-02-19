@@ -105,7 +105,7 @@ object SimulinkOptimizer extends App {
       name -> (min.toDouble, max.toDouble)
     }.toMap[String, (Double, Double)]
 
-    metaTool.initialize(model, area, initializer = ExactInitializer(target = 0.0))
+    metaTool.initialize(model, area, initializer = ExactInitializer(defaultValue = 0.0))
 
     println("Working")
     val optimalParameters =
