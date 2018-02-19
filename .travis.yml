@@ -10,5 +10,5 @@ env:
 
 script:
   - sbt assembly
-deploy:
+after_success:
   - mvn clean deploy --settings settings.xml
