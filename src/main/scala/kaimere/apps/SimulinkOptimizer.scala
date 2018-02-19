@@ -6,7 +6,7 @@ import java.io._
 import scala.io.Source
 import spray.json._
 import kaimere.kernels.Matlab
-import kaimere.real.optimization.general.initializers.ExactInitializer
+import kaimere.real.optimization.general.initializers.{ExactInitializer, PureRandomInitializer}
 import kaimere.real.optimization.general.{MetaOptimizationAlgorithm, OptimizationAlgorithm, State}
 import kaimere.real.optimization.general.instructions._
 import kaimere.tools.etc._
@@ -69,7 +69,7 @@ object SimulinkOptimizer extends App {
       else Some(Source.fromFile(conf.initialState()).getLines().mkString("\n").parseJson.convertTo[State])
 
     println("Working")
-    optimizationTool.initialize(model, model.parameterArea, state = initialState)
+    optimizationTool.initialize(model, model.parameterArea, state = initialState, initializer = PureRandomInitializer())
     val optimalParameters = optimizationTool.work(instruction)
 
     val result = model(optimalParameters)
