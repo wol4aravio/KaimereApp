@@ -45,7 +45,8 @@ object SimulinkOptimizer extends App {
 
   def areaToJson(area: OptimizationAlgorithm.Area): JsValue = {
     JsArray(area.map { case (key, (min, max)) =>
-      JsObject("key" -> JsString(key), "min" -> JsNumber(min), "max" -> JsNumber(max))}
+      JsObject("key" -> JsString(key), "min" -> JsNumber(min), "max" -> JsNumber(max))
+    }
       .toVector)
   }
 
@@ -61,7 +62,7 @@ object SimulinkOptimizer extends App {
     println("Initializing Optimization Tools")
     val optimizationTool = Source.fromFile(conf.optimizationToolJson()).getLines().mkString("\n").parseJson |> OptimizationAlgorithm.fromJson
     val instruction =
-      if(conf.instruction.isEmpty) null
+      if (conf.instruction.isEmpty) null
       else Instruction.fromCsv(conf.instruction())
 
     val initialState =
@@ -87,6 +88,7 @@ object SimulinkOptimizer extends App {
          |   "simulinkModelSlx": "${conf.simulinkModelSlx()}",
          |   "simulinkModelJson": "${conf.simulinkModelJson()}",
          |   "algorithm": ${OptimizationAlgorithm.toJson(optimizationTool)},
+         |   "instruction": ${Instruction.toJson(instruction)},
          |   "blocks": $outputJson
          |}
         """.stripMargin.parseJson
