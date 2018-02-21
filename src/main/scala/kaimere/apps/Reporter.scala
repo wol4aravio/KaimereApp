@@ -21,6 +21,7 @@ object Reporter extends App {
     val graphicsJson = opt[String](required = true)
     val width = opt[Int](default = Some(500))
     val height = opt[Int](default = Some(500))
+    val step = opt[Int](default = Some(10))
     val delay = opt[Double](default = Some(0.1))
     val saveTo = opt[String](required = true)
     verify()
@@ -92,7 +93,7 @@ object Reporter extends App {
               width: Int, height: Int,
               whatToDraw: ((Int, Int), (String, String), Seq[(String, (Int, Int, Int, Int), Seq[(Option[String], String, String)])]),
               areaCriterionPenalty: (Double, Double, Double, Double),
-              delay: Double, filename: String, fontSize: Int = 16
+              delay: Double, step: Int, filename: String, fontSize: Int = 16
              ): Unit = {
 
     val (rows, cols) = whatToDraw._1
@@ -125,7 +126,7 @@ object Reporter extends App {
       Matlab.eval(s"ylim([$minCriterion, $maxCriterion]);")
       Matlab.eval("a = get(gca, 'XTickLabel');")
       Matlab.eval(s"set(gca, 'XTickLabel', a, 'FontSize', $fontSize);")
-      Matlab.eval(s"title('Criterion on Iteration #${slideId + 1}', 'FontSize', $fontSize);")
+      Matlab.eval(s"title('Criterion on Iteration #${slideId * step + 1}', 'FontSize', $fontSize);")
 
       // Plot Penalty
       Matlab.eval(s"subplot($rows, $cols, $positionPenalty);")
@@ -134,7 +135,7 @@ object Reporter extends App {
       Matlab.eval(s"ylim([$minPenalty, $maxPenalty]);")
       Matlab.eval("a = get(gca, 'XTickLabel');")
       Matlab.eval(s"set(gca, 'XTickLabel', a, 'FontSize', $fontSize);")
-      Matlab.eval(s"title('Penalty on Iteration #${slideId + 1}', 'FontSize', $fontSize);")
+      Matlab.eval(s"title('Penalty on Iteration #${slideId * step + 1}', 'FontSize', $fontSize);")
 
       // Plot remaining objects
       Range(0, numberOfPlots).foreach { plotId =>
@@ -158,7 +159,7 @@ object Reporter extends App {
         Matlab.eval(s"set(gca, 'XTickLabel', a, 'FontSize', $fontSize);")
         Matlab.eval(s"lg = legend(${names.mkString(", ")}, 'Location', 'southoutside', 'Orientation', 'horizontal');")
         Matlab.eval(s"lg.FontSize = $fontSize;")
-        Matlab.eval(s"title('Iteration: ${slideId + 1}', 'FontSize', $fontSize);")
+        Matlab.eval(s"title('Iteration: ${slideId * step + 1}', 'FontSize', $fontSize);")
       }
 
       // Save file
@@ -200,15 +201,12 @@ object Reporter extends App {
         else state.getBestBy(model)._1
       }
       .zipWithIndex
+      .filter { case (_, id) => id % conf.step() == 0}
       .map { case (v, id) =>
-
         println(s"Processing state ${id + 1}/${states.length}")
-
         model(v)
-
         val criterion = Matlab.getVariable("criterion")
         val penalty = Matlab.getVariable("penalty")
-
         (criterion, penalty, varsToExtract.map{ varName => (varName, Matlab.getTimeSeries(varName)) }.toMap)
       }
 
@@ -222,7 +220,7 @@ object Reporter extends App {
       objectsToDraw, criterionValues, penaltyValues,
       conf.width(), conf.height(), whatToDraw,
       (criterionValues.min, criterionValues.max, penaltyValues.min, penaltyValues.max),
-      conf.delay(), conf.saveTo())
+      conf.delay(), conf.step(), conf.saveTo())
 
     println("Terminating Matlab Engine")
     terminate(conf)
