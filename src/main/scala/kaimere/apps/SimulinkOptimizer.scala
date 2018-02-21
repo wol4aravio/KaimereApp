@@ -21,6 +21,7 @@ object SimulinkOptimizer extends App {
     val optimizationToolJson = opt[String](required = true)
     val instruction = opt[String]()
     val initialState = opt[String](default = Option.empty[String])
+    val outputLogName = opt[String](default = Some("log"))
     verify()
   }
 
@@ -92,7 +93,7 @@ object SimulinkOptimizer extends App {
          |   "blocks": $outputJson
          |}
         """.stripMargin.parseJson
-    val out = new BufferedWriter(new FileWriter("log.json"))
+    val out = new BufferedWriter(new FileWriter(s"${conf.outputLogName()}.json"))
     out.write(logJson.prettyPrint)
     out.close()
 
