@@ -71,8 +71,18 @@ object Reporter extends App {
 
   def makeGif(folder: String, delay: Double, save_to: String): Unit = {
 
-    val libLoc = getClass.getResource("/gif_maker.py").getFile
-    s"python $libLoc --folder $folder --delay $delay --save_to $save_to" !!
+    val libStream = getClass.getResourceAsStream("/gif_maker.py")
+    val tmpFile = File.createTempFile("gif_maker_", ".py")
+    tmpFile.createNewFile()
+
+    val buffer = scala.io.Source.fromInputStream(libStream)
+    val writer = new PrintWriter(tmpFile)
+    buffer.getLines().foreach(l => writer.println(l))
+    writer.close()
+
+    Process(s"python ${tmpFile.getAbsoluteFile} --folder $folder --delay $delay --save_to $save_to") !
+
+    tmpFile.deleteOnExit()
 
   }
 
@@ -152,9 +162,10 @@ object Reporter extends App {
       }
 
       // Save file
-      Matlab.eval(s"saveas(img, 'tmp/${StateLogger.numToStr(slideId)}.tif')")
+      Matlab.eval(s"saveas(img, '${filename}_images/${StateLogger.numToStr(slideId)}.tif')")
     }
 
+    println("Merging to GIF")
     makeGif(s"${filename}_images", delay, filename)
   }
 

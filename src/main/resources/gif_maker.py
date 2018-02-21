@@ -3,14 +3,6 @@ import imageio
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser, RawTextHelpFormatter
 
-png_dir = "./saves/png/"
-images = []
-for subdir, dirs, files in os.walk(png_dir):
-    for file in files:
-        file_path = os.path.join(subdir, file)
-        if file_path.endswith(".png"):
-            images.append(imageio.imread(file_path))
-imageio.mimsave('./saves/gif/movie.gif', images)
 
 def gather_files(target_dirs):
     file_names = []
@@ -42,7 +34,8 @@ parser = ArgumentParser(description="GifMaker Api",
 
 parser.add_argument("--folder",
                     type=str,
-                    help='Folder where files are located')
+                    nargs='+',
+                    help='Folders where files are located')
 
 parser.add_argument("--delay",
                     type=float,
