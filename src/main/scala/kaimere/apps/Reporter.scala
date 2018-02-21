@@ -2,6 +2,7 @@ package kaimere.apps
 
 import org.rogach.scallop.ScallopConf
 import spray.json._
+import sys.process._
 import java.io._
 
 import scala.io.Source
@@ -68,6 +69,14 @@ object Reporter extends App {
       })
   }
 
+  def makeGif(folder: String, delay: Double, save_to: String): Unit = {
+
+    val libLoc = getClass.getResource("/gif_maker.py").getFile
+    s"python $libLoc --folder $folder --delay $delay --save_to $save_to" !!
+
+  }
+
+
   def drawGif(objectsToDraw: Seq[Map[String, (Seq[Double], Seq[Double])]],
               criterionValues: Seq[Double], penaltyValues: Seq[Double],
               width: Int, height: Int,
@@ -87,7 +96,7 @@ object Reporter extends App {
 
     val numberOfPlots = subplot.size
 
-    val tmpFolder = new File("tmp")
+    val tmpFolder = new File(s"${filename}_images")
     if (tmpFolder.exists()) StateLogger.deleteFolder(tmpFolder)
     tmpFolder.mkdir()
 
@@ -119,7 +128,7 @@ object Reporter extends App {
 
       // Plot remaining objects
       Range(0, numberOfPlots).foreach { plotId =>
-        val objectMap = objectsToDraw(plotId)
+        val objectMap = objects
         val position = subplot(plotId)
         val axes = allAxes(plotId).map { case (x, y, name) =>
           if (x.isEmpty) (s"[${objectMap(y)._1.mkString(", ")}]", s"[${objectMap(y)._2.mkString(", ")}]", s"'$name'")
@@ -128,14 +137,10 @@ object Reporter extends App {
         val xAxis = axes.map(_._1)
         val yAxis = axes.map(_._2)
         val names = axes.map(_._3)
-        println("")
-        println(xAxis)
-        println(yAxis)
-        println("")
         val (xMin, xMax, yMin, yMax) = limits(plotId)
         Matlab.eval(s"subplot($rows, $cols, $position);")
         Matlab.eval("hold on")
-        Range(0, xAxis.length).foreach(id => Matlab.eval(s"plot(${xAxis(id)}, ${yAxis(id)}, 'LineWidth', 2);"))
+        xAxis.indices.foreach(id => Matlab.eval(s"plot(${xAxis(id)}, ${yAxis(id)}, 'LineWidth', 2);"))
         Matlab.eval("hold off")
         Matlab.eval(s"xlim([$xMin, $xMax]);")
         Matlab.eval(s"ylim([$yMin, $yMax]);")
@@ -149,6 +154,8 @@ object Reporter extends App {
       // Save file
       Matlab.eval(s"saveas(img, 'tmp/${StateLogger.numToStr(slideId)}.tif')")
     }
+
+    makeGif(s"${filename}_images", delay, filename)
   }
 
   def main(conf: Conf): Unit = {
@@ -191,15 +198,13 @@ object Reporter extends App {
         val criterion = Matlab.getVariable("criterion")
         val penalty = Matlab.getVariable("penalty")
 
-        (criterion, penalty, varsToExtract.map{ v => (v, Matlab.getTimeSeries(v)) }.toMap)
+        (criterion, penalty, varsToExtract.map{ varName => (varName, Matlab.getTimeSeries(varName)) }.toMap)
       }
 
     val criterionValues = characteristics.map(_._1)
     val penaltyValues = characteristics.map(_._2)
 
     val objectsToDraw = characteristics.map(_._3)
-
-    objectsToDraw.head.foreach(println)
 
     println("Making graphics")
     drawGif(
