@@ -37,7 +37,6 @@ parser = ArgumentParser(description="GifMaker Api",
 
 parser.add_argument("--folder",
                     type=str,
-                    nargs='+',
                     help='Folders where files are located')
 
 parser.add_argument("--delay",
