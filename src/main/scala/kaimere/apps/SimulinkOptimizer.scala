@@ -68,7 +68,14 @@ object SimulinkOptimizer extends App {
 
     val initialState =
       if (conf.initialState.isEmpty) None
-      else Some(Source.fromFile(conf.initialState()).getLines().mkString("\n").parseJson.convertTo[State])
+      else {
+        if (conf.initialState().endsWith(".json"))
+          Some(Source.fromFile(conf.initialState()).getLines().mkString("\n").parseJson.convertTo[State])
+        else {
+          val filesInDir = new File(conf.initialState()).listFiles().filter(_.getName.endsWith("json"))
+          Some(Source.fromFile(filesInDir.maxBy(_.getName)).getLines().mkString("\n").parseJson.convertTo[State])
+        }
+      }
 
     println("Working")
     optimizationTool.initialize(model, model.parameterArea, state = initialState, initializer = PureRandomInitializer())
